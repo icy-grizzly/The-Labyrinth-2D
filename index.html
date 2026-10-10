@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
+    <title>Pixel Labyrinth MMORPG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0d0d0d;
+            color: #fff;
+            font-family: 'Press Start 2P', monospace;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 100%;
+            max-height: 100%;
+            background: #111;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            background-color: #1b261b;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* --- Streamlined HUD --- */
+        #hud {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .hud-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .hud-label {
+            font-size: 8px;
+            color: #fff;
+            text-shadow: 1px 1px #000;
+            width: 32px;
+        }
+        .bar-container {
+            width: 140px;
+            height: 14px;
+            background: #222;
+            border: 2px solid #555;
+            position: relative;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            transition: width 0.1s linear;
+        }
+        #hp-fill { background: #e74c3c; }
+        #exp-fill { background: #f1c40f; }
+
+        /* --- Mini-Map & Dungeons --- */
+        #top-right-hud {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+            z-index: 10;
+            pointer-events: none;
+        }
+        #dungeon-info {
+            font-size: 8px;
+            background: rgba(0,0,0,0.7);
+            padding: 6px 10px;
+            border: 2px solid #444;
+            color: #3498db;
+            text-shadow: 1px 1px #000;
+        }
+        #minimap {
+            width: 90px;
+            height: 90px;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #555;
+            position: relative;
+        }
+
+        /* --- Pause Button & Menu --- */
+        #pause-btn {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            border: 2px solid #777;
+            color: #fff;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            z-index: 20;
+        }
+        #pause-btn:active { background: #555; }
+
+        #pause-menu {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            z-index: 30;
+        }
+        #pause-menu h1 {
+            font-size: 16px;
+            color: #f1c40f;
+            text-shadow: 2px 2px #c0392b;
+        }
+        .menu-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 10px;
+            padding: 12px 24px;
+            background: #2c3e50;
+            border: 3px solid #3498db;
+            color: white;
+            cursor: pointer;
+        }
+        .menu-btn:active { background: #34495e; }
+
+        /* --- Mobile Controls --- */
+        #joystick-zone {
+            position: absolute;
+            bottom: 25px;
+            left: 25px;
+            width: 110px;
+            height: 110px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 3px solid rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        #joystick-handle {
+            position: absolute;
+            width: 45px;
+            height: 45px;
+            background: rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        #action-btn {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 80px;
+            height: 80px;
+            background: rgba(231, 76, 60, 0.8);
+            border: 3px solid rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 8px;
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        #action-btn:active { background: rgba(192, 57, 43, 1); transform: scale(0.95); }
+
+        /* Hide desktop hint on small touch screens */
+        @media (max-width: 768px) {
+            #controls-hint { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="960" height="540"></canvas>
+
+    <!-- HUD -->
+    <div id="hud">
+        <div class="hud-group">
+            <span class="hud-label">HP</span>
+            <div class="bar-container"><div id="hp-fill" class="bar-fill" style="width: 100%;"></div></div>
+        </div>
+        <div class="hud-group">
+            <span class="hud-label">EXP</span>
+            <div class="bar-container"><div id="exp-fill" class="bar-fill" style="width: 0%;"></div></div>
+        </div>
+    </div>
+
+    <div id="top-right-hud">
+        <div id="dungeon-info">Labyrinth 1</div>
+        <canvas id="minimap" width="90" height="90"></canvas>
+    </div>
+
+    <button id="pause-btn">PAUSE</button>
+
+    <!-- Pause Menu -->
+    <div id="pause-menu">
+        <h1>GAME PAUSED</h1>
+        <button class="menu-btn" id="resume-btn">RESUME</button>
+        <button class="menu-btn" id="fullscreen-btn">FULLSCREEN</button>
+    </div>
+
+    <!-- Mobile Virtual Controls -->
+    <div id="joystick-zone">
+        <div id="joystick-handle"></div>
+    </div>
+    <div id="action-btn">ATTACK</div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const mmCanvas = document.getElementById('minimap');
+const mmCtx = mmCanvas.getContext('2d');
+
+// Game States
+let isPaused = false;
+let currentLevel = 1;
+
+const player = {
+    x: 480,
+    y: 270,
+    radius: 12,
+    speed: 3.2,
+    hp: 100,
+    maxHp: 100,
+    exp: 0,
+    maxExp: 100,
+    attackRadius: 40,
+    isAttacking: false,
+    attackTimer: 0,
+    facingAngle: 0,
+    swingAngle: 0
+};
+
+const keys = {};
+const mouse = { x: 480, y: 270 };
+const monsters = [];
+const walls = [];
+let portal = null;
+
+// Joystick state
+const joystick = {
+    active: false,
+    identifier: null,
+    startX: 0,
+    startY: 0,
+    x: 0,
+    y: 0
+};
+
+// Enemy types per labyrinth level
+const enemyTypes = {
+    1: { name: 'Slime', color: '#2ecc71', radius: 10, hp: 30, speed: 1.1, exp: 30 },
+    2: { name: 'Goblin', color: '#e67e22', radius: 13, hp: 60, speed: 1.
